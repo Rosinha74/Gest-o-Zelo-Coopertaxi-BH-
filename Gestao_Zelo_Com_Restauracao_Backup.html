@@ -1,0 +1,1581 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Gestão Zelo/Coopertaxi-BH - COMPLETO</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+<style>
+
+body{
+font-family:Arial;
+background:#eef2f7;
+padding:20px;
+margin:0;
+}
+
+.topo{
+background:#0b3d91;
+color:white;
+padding:15px;
+border-radius:10px;
+margin-bottom:15px;
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+.menu{
+display:flex;
+gap:10px;
+margin-bottom:15px;
+flex-wrap:wrap;
+}
+
+.card{
+background:white;
+padding:15px;
+border-radius:10px;
+margin-bottom:15px;
+box-shadow:0 2px 8px rgba(0,0,0,.1);
+}
+
+.tela{
+display:none;
+}
+
+.tela.ativa{
+display:block;
+}
+
+input,select,button,textarea{
+padding:8px;
+margin:4px;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:14px;
+}
+
+input[type="text"], input[type="email"], textarea{
+text-transform: uppercase;
+}
+
+button{
+background:#0b3d91;
+color:white;
+cursor:pointer;
+border:none;
+}
+
+button:hover{
+opacity:.9;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+background:white;
+}
+
+th,td{
+padding:8px;
+border:1px solid #ddd;
+font-size:13px;
+text-align:left;
+}
+
+th{
+background:#0b3d91;
+color:white;
+position:sticky;
+top:0;
+cursor: pointer;
+}
+
+tr:nth-child(even){
+background:#f5f5f5;
+}
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:12px;
+}
+
+.kpi{
+background:#0b3d91;
+color:white;
+padding:15px;
+border-radius:10px;
+text-align:center;
+}
+
+.kpi h3{
+margin:0;
+font-size:14px;
+}
+
+.kpi p{
+font-size:28px;
+font-weight:bold;
+margin:10px 0 0;
+}
+
+.acao{
+padding:5px 8px;
+font-size:12px;
+}
+
+.editar{ background:#198754; }
+.excluir{ background:#dc3545; }
+.validar{ background:#ffc107; color: black; }
+
+.status-badge {
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+.status-habilitado { background: #d1e7dd; color: #0f5132; }
+.status-desabilitado { background: #f8d7da; color: #842029; }
+.status-excluido { background: #fff3cd; color: #856404; }
+.status-morto { background: #e2e3e5; color: #41464b; }
+.status-pendente { background: #cfe2ff; color: #084298; }
+
+/* Modais */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.reciboBox {
+    page-break-after: always;
+    border: 2px solid #0b3d91;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: white;
+}
+
+.valorDinheiro {
+    font-size: 18px;
+    font-weight: bold;
+    color: #0b3d91;
+}
+
+@media print {
+    body * { visibility: hidden; }
+    #areaRecibo, #areaRecibo * { visibility: visible; }
+    #areaRecibo { position: absolute; left: 0; top: 0; width: 100%; }
+    .no-print { display: none !important; }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="topo no-print">
+    <h1>Gestão Zelo/Coopertaxi-BH ✅</h1>
+    <div id="infoBackup" style="font-size: 12px; text-align: right;"></div>
+</div>
+
+<div class="menu no-print">
+<button onclick="mostrarTela('principal')">Sistema</button>
+<button onclick="mostrarTela('financeiro')">Financeiro</button>
+<button onclick="mostrarTela('historico')">Histórico Geral</button>
+<button onclick="mostrarTela('exportacao')">Exportação</button>
+<button onclick="mostrarTela('recibos')">Recibos</button>
+<button onclick="mostrarTela('remessas')">Remessas / Arquivo</button>
+<button onclick="mostrarTela('excluidos')">Excluídos / Morto</button>
+</div>
+
+<div id="principal" class="tela ativa no-print">
+
+<div class="card">
+<h2>Configurações do Sistema</h2>
+<div class="grid">
+    <div>
+        <label>Valor por Vida (R$):</label><br>
+        <input type="number" id="cfg_valor_vida" value="4.00" step="0.50" onchange="salvarConfig()">
+    </div>
+    <div>
+        <label>E-mail CooperTaxi:</label><br>
+        <input type="text" id="cfg_email_cooper" value="atendimento@coopertaxi.com.br" style="text-transform: none;" onchange="salvarConfig()">
+    </div>
+</div>
+<br>
+<button onclick="exportarBackupJSON()" style="background:#6c757d">Exportar Backup Manual (JSON)</button>
+<button onclick="exportarBackupCompletoSeguranca()" style="background:#dc3545">Backup Completo Segurança</button>
+<input type="file" id="excelFile" style="display:none">
+<input type="file" id="excelFuncionarios" style="display:none">
+<input type="file" id="backupFile" accept=".json" style="display:none">
+<button onclick="document.getElementById('excelFile').click()" style="background:#198754">Importar Base Excel</button>
+<button onclick="document.getElementById('excelFuncionarios').click()" style="background:#fd7e14">📥 Importar Funcionários</button>
+<button onclick="document.getElementById('backupFile').click()" style="background:#198754">📥 Restaurar Backup JSON</button>
+</div>
+
+<div class="card">
+<h2>Buscar e Filtrar</h2>
+<div class="grid">
+    <input type="text" id="busca" placeholder="Buscar nome, CPF ou numeral" onkeyup="filtrar()">
+    <select id="filtro" onchange="filtrar()">
+        <option value="">TODAS CATEGORIAS</option>
+        <option value="TITULAR">TITULAR</option>
+        <option value="DEPENDENTE">DEPENDENTE</option>
+        <option value="FUNCIONARIO">FUNCIONARIO</option>
+        <option value="DEPENDENTE FUNCIONARIO">DEPENDENTE FUNCIONARIO</option>
+    </select>
+    <select id="filtroStatus" onchange="filtrar()">
+        <option value="">TODOS STATUS</option>
+        <option value="HABILITADO">HABILITADO</option>
+        <option value="NAO HABILITADO">NÃO HABILITADO</option>
+        <option value="AGUARDANDO VALIDAÇÃO">AGUARDANDO VALIDAÇÃO</option>
+    </select>
+</div>
+<div style="margin-top:10px">
+    <button onclick="limparBusca()">Limpar Filtros</button>
+</div>
+</div>
+
+<div class="card">
+<h2 id="tituloCadastro">Cadastrar Nova Vida</h2>
+<div class="grid">
+    <input id='nv_num' placeholder='Numeral' oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <input id='nv_nome' placeholder='Nome completo'>
+    <input id='nv_cpf' placeholder='CPF (Somente números)' maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <input id='nv_rg' placeholder='RG (Somente números)' oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <input id='nv_nasc' type='date' placeholder='Data de Nascimento'>
+    <input id='nv_email' placeholder='E-mail' style="text-transform: none;">
+    <select id='nv_cat'>
+        <option value='TITULAR'>TITULAR</option>
+        <option value='DEPENDENTE'>DEPENDENTE</option>
+        <option value='FUNCIONARIO'>FUNCIONARIO</option>
+        <option value='DEPENDENTE FUNCIONARIO'>DEPENDENTE FUNCIONARIO</option>
+    </select>
+</div>
+<button onclick='salvarRegistro()'>Salvar</button>
+<button id="btnCancelarEdicao" style="display:none; background:#6c757d" onclick="cancelarEdicao()">Cancelar</button>
+</div>
+
+<div class="card">
+<h2>Base de Dados</h2>
+<div style="overflow-x:auto">
+    <table>
+    <thead>
+    <tr>
+    <th onclick="ordenarBase('num')">Numeral ↕</th>
+    <th onclick="ordenarBase('nome')">Nome ↕</th>
+    <th>CPF</th>
+    <th>RG</th>
+    <th>Nascimento</th>
+    <th onclick="ordenarBase('cat')">Categoria ↕</th>
+    <th>Status</th>
+    <th>Ações</th>
+    </tr>
+    </thead>
+    <tbody id="tb"></tbody>
+    </table>
+</div>
+<div id="tot" style="margin-top:10px; font-weight:bold"></div>
+</div>
+
+</div>
+
+<div id="financeiro" class="tela no-print">
+<div class="card">
+<h2>Dashboard Financeiro</h2>
+<div class="grid">
+<div class="kpi"><h3>Total de Vidas</h3><p id="kpiVidas">0</p></div>
+<div class="kpi"><h3>Titulares</h3><p id="kpiTitulares">0</p></div>
+<div class="kpi"><h3>Dependentes</h3><p id="kpiDependentes">0</p></div>
+<div class="kpi"><h3>Funcionários</h3><p id="kpiFuncionarios">0</p></div>
+<div class="kpi"><h3>Dep. Funcionários</h3><p id="kpiDepFunc">0</p></div>
+</div>
+</div>
+
+<div class="card">
+<h2>Consulta Financeira</h2>
+<input type="text" id="buscaFinanceiro" placeholder="Buscar nome ou numeral" onkeyup="buscarFinanceiro()">
+<div style="overflow-x:auto">
+    <table>
+    <thead>
+    <tr>
+    <th>Numeral</th>
+    <th>Nome</th>
+    <th>Dependentes</th>
+    <th>Dependentes Nomes</th>
+    <th>Valor</th>
+    </tr>
+    </thead>
+    <tbody id="tbFinanceiro"></tbody>
+    </table>
+</div>
+</div>
+</div>
+
+<div id="historico" class="tela no-print">
+<div class="card">
+<h2>Histórico Geral</h2>
+<div style="margin-bottom:10px">
+    <button onclick="limparHistorico()" style="background:#dc3545">Limpar e Arquivar Histórico</button>
+</div>
+<div style="overflow-x:auto">
+    <table>
+    <thead>
+    <tr>
+    <th>Data/Hora</th>
+    <th>Ação</th>
+    <th>Detalhes</th>
+    </tr>
+    </thead>
+    <tbody id="historicoTb"></tbody>
+    </table>
+</div>
+</div>
+</div>
+
+<div id="exportacao" class="tela no-print">
+<div class="card">
+<h2>Exportação Multi-Abas</h2>
+<p>As exportações agora geram arquivos Excel com abas separadas por categoria e cálculos automáticos.</p>
+<div class="grid">
+    <button onclick="gerarRemessa('FINANCEIRO')" style="background:#198754">Exportar Financeiro (Dia 05)</button>
+    <button onclick="gerarRemessa('ZELO')" style="background:#0d6efd">Exportar Zelo (Dia 25)</button>
+    <button onclick="gerarRemessa('RH')" style="background:#6610f2">Exportar RH (Funcionários)</button>
+    <button onclick="exportarBaseCompleta()" style="background:#198754">📊 Exportar Base Completa</button>
+</div>
+</div>
+</div>
+
+<div id="recibos" class="tela no-print">
+<div class="card">
+<h2>Recibos</h2>
+<div class="grid">
+    <input type="text" id="buscaRecibo" placeholder="Buscar nome ou numeral" onkeyup="filtrarRecibos()">
+    <select id="filtroReciboCat" onchange="filtrarRecibos()">
+        <option value="">TODOS</option>
+        <option value="TITULAR">SÓ TITULARES (COOPERTAXI PAGA)</option>
+        <option value="DEPENDENTE">SÓ DEPENDENTES (TITULAR PAGA)</option>
+        <option value="FUNCIONARIO">SÓ FUNCIONÁRIOS (RH PAGA)</option>
+    </select>
+</div>
+<div style="display:flex; align-items:center; gap:10px; margin-top:10px">
+    <button onclick="selecionarTodosRecibos(true)">Selecionar Todos</button>
+    <button onclick="selecionarTodosRecibos(false)">Desmarcar Todos</button>
+</div>
+<div style="overflow-x:auto; max-height:400px; overflow-y:auto; margin-top:15px">
+    <table>
+    <thead>
+    <tr>
+    <th>Sel.</th>
+    <th>Numeral</th>
+    <th>Nome</th>
+    <th>Dep.</th>
+    <th>Valor</th>
+    <th>Ação</th>
+    </tr>
+    </thead>
+    <tbody id="tbRecibos"></tbody>
+    </table>
+</div>
+<br>
+<div class="grid">
+    <button onclick="imprimirSelecionados()" style="background:#198754">🖨️ Imprimir Selecionados</button>
+    <button onclick="baixarRecibosPDF()" style="background:#dc3545">📄 Baixar Recibos em PDF</button>
+</div>
+</div>
+</div>
+
+<div id="remessas" class="tela no-print">
+<div class="card">
+<h2>Arquivo de Remessas e Movimentação</h2>
+<div id="listaRemessas"></div>
+</div>
+</div>
+
+<div id="excluidos" class="tela no-print">
+<div class="card">
+<h2>Excluídos (Temporário)</h2>
+<div style="overflow-x:auto">
+    <table>
+    <thead>
+    <tr>
+        <th>Nome</th>
+        <th>Numeral</th>
+        <th>CPF</th>
+        <th>Status</th>
+        <th>Ação</th>
+    </tr>
+    </thead>
+    <tbody id="tbExcluidos"></tbody>
+    </table>
+</div>
+</div>
+
+<div class="card">
+<h2>Arquivo Morto (Definitivo)</h2>
+<div style="overflow-x:auto">
+    <table>
+    <thead>
+    <tr>
+        <th>Nome</th>
+        <th>Numeral</th>
+        <th>CPF</th>
+        <th>Status</th>
+        <th>Ação</th>
+    </tr>
+    </thead>
+    <tbody id="tbArquivoMorto"></tbody>
+    </table>
+</div>
+</div>
+</div>
+
+<!-- Modais -->
+<div id="modalObs" class="modal no-print">
+    <div class="modal-content">
+        <h3>Adicionar Observação / Motivo</h3>
+        <p id="modalObsInfo"></p>
+        <label>Autorizado por:</label><br>
+        <input type="text" id="obsAutor" placeholder="Nome de quem autorizou" style="width: 95%"><br><br>
+        <label>Motivo / Observação:</label><br>
+        <textarea id="obsTexto" placeholder="Descreva o motivo da alteração" style="width: 95%; height: 100px"></textarea><br><br>
+        <div style="text-align: right">
+            <button onclick="fecharModal('modalObs')" style="background:#6c757d">Cancelar</button>
+            <button id="btnConfirmarObs" style="background:#0b3d91">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalHistInd" class="modal no-print">
+    <div class="modal-content">
+        <h3 id="modalHistIndTitulo">Histórico do Cadastro</h3>
+        <div style="overflow-y: auto; max-height: 300px">
+            <table style="font-size: 12px">
+                <thead><tr><th>Data</th><th>Ação</th><th>Obs</th></tr></thead>
+                <tbody id="tbHistInd"></tbody>
+            </table>
+        </div><br>
+        <div style="text-align: right">
+            <button onclick="fecharModal('modalHistInd')">Fechar</button>
+        </div>
+    </div>
+</div>
+
+<div id="areaRecibo"></div>
+
+<script>
+
+let base=[];
+let current=[];
+let remessas=[];
+let historicoArquivado=[];
+let editando=-1;
+let ordemAtual = { campo: '', direcao: 1 };
+let acaoPendente = null;
+
+let VALOR_VIDA = 4.00;
+let EMAIL_COOPER = "atendimento@coopertaxi.com.br";
+
+document.getElementById('excelFile').addEventListener('change',lerExcel);
+document.getElementById('excelFuncionarios').addEventListener('change',importarFuncionarios);
+document.getElementById('backupFile').addEventListener('change',restaurarBackupJSON);
+
+function mostrarTela(id){
+    document.querySelectorAll('.tela').forEach(t=>t.classList.remove('ativa'));
+    document.getElementById(id).classList.add('ativa');
+}
+
+function salvarConfig(){
+    VALOR_VIDA = parseFloat(document.getElementById('cfg_valor_vida').value) || 4.00;
+    EMAIL_COOPER = document.getElementById('cfg_email_cooper').value.trim();
+    localStorage.setItem('configZelo', JSON.stringify({VALOR_VIDA, EMAIL_COOPER}));
+    atualizarFinanceiro();
+}
+
+function carregarConfig(){
+    let cfg = localStorage.getItem('configZelo');
+    if(cfg){
+        let c = JSON.parse(cfg);
+        VALOR_VIDA = c.VALOR_VIDA;
+        EMAIL_COOPER = c.EMAIL_COOPER;
+        document.getElementById('cfg_valor_vida').value = VALOR_VIDA;
+        document.getElementById('cfg_email_cooper').value = EMAIL_COOPER;
+    }
+}
+
+function salvarBackupAutomatico(){
+    const backup = {
+        data: new Date().toLocaleString('pt-BR'),
+        base,
+        remessas,
+        historicoArquivado
+    };
+    
+    localStorage.setItem('backupAutoZelo', JSON.stringify(backup));
+    
+    // Simular salvamento em pasta (em navegador, não é possível salvar em pasta específica)
+    // Mas podemos registrar no histórico
+    console.log('Backup automático salvo em:', new Date().toLocaleString('pt-BR'));
+}
+
+function registrarHistorico(acao, nome, obs = "", autor = "", cpf = "", num = ""){
+    let hist=JSON.parse(localStorage.getItem('historicoZelo')||'[]');
+    const item = {
+        data: new Date().toLocaleString('pt-BR'),
+        acao,
+        nome: nome.toUpperCase(),
+        obs: obs.toUpperCase(),
+        autor: autor.toUpperCase(),
+        cpf,
+        num
+    };
+    hist.unshift(item);
+    if(hist.length > 500) hist.pop();
+    localStorage.setItem('historicoZelo',JSON.stringify(hist));
+    renderHistorico();
+    salvarBackupAutomatico();
+}
+
+function renderHistorico(){
+    const historicoTb = document.getElementById('historicoTb');
+    let hist=JSON.parse(localStorage.getItem('historicoZelo')||'[]');
+    historicoTb.innerHTML=hist.map(h=>`<tr><td>${h.data}</td><td><b>${h.acao}</b></td><td>${h.nome} ${h.num ? '('+h.num+')' : ''}<br><small>${h.obs ? 'Motivo: '+h.obs : ''} ${h.autor ? '| Por: '+h.autor : ''}</small></td></tr>`).join('');
+}
+
+function limparHistorico(){
+    if(confirm('Deseja limpar o histórico atual? Ele será movido para o arquivo permanente.')){
+        let hist=JSON.parse(localStorage.getItem('historicoZelo')||'[]');
+        historicoArquivado = historicoArquivado.concat(hist);
+        localStorage.setItem('historicoArquivadoZelo', JSON.stringify(historicoArquivado));
+        localStorage.setItem('historicoZelo','[]');
+        renderHistorico();
+        alert('Histórico arquivado com sucesso!');
+    }
+}
+
+function salvarLocal(){
+    localStorage.setItem('baseZelo',JSON.stringify(base));
+    localStorage.setItem('remessasZelo',JSON.stringify(remessas));
+    localStorage.setItem('historicoArquivadoZelo', JSON.stringify(historicoArquivado));
+    salvarBackupAutomatico();
+}
+
+function carregarLocal(){
+    carregarConfig();
+    let salvo=localStorage.getItem('baseZelo');
+    if(salvo){
+        base=JSON.parse(salvo);
+        base=base.map(x=>({
+            ...x,
+            status:x.status||'HABILITADO',
+            statusCadastro:x.statusCadastro||'ATIVO',
+            dataCadastro: x.dataCadastro || new Date().toISOString(),
+            ultimaAlteracao: x.ultimaAlteracao || new Date().toISOString(),
+            obs: x.obs || []
+        }));
+        current=[...base];
+        render(current);
+    }
+    let remessasSalvas = localStorage.getItem('remessasZelo');
+    if(remessasSalvas) remessas = JSON.parse(remessasSalvas);
+    let histArq = localStorage.getItem('historicoArquivadoZelo');
+    if(histArq) historicoArquivado = JSON.parse(histArq);
+    
+    renderHistorico();
+    renderExcluidos();
+    renderRemessas();
+}
+
+function exportarBackupCompletoSeguranca(){
+    const backupSeguranca = {
+        base,
+        remessas,
+        historicoArquivado,
+        data: new Date().toLocaleString('pt-BR')
+    };
+
+    const blob = new Blob(
+        [JSON.stringify(backupSeguranca, null, 2)],
+        {type:'application/json'}
+    );
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BACKUP_COMPLETO_ZELO.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert('Backup completo salvo com sucesso!');
+}
+
+function exportarBackupJSON(isAuto = false){
+    try {
+        const data = JSON.stringify({base, remessas, historicoArquivado, config: {VALOR_VIDA, EMAIL_COOPER}}, null, 2);
+        const blob = new Blob([data], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dataStr = new Date().toISOString().split('T')[0];
+        a.href = url;
+        a.download = `BACKUP_ZELO_COOP_${isAuto ? 'AUTO_' : 'MANUAL_'}${dataStr}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        if(!isAuto) alert('Backup exportado com sucesso!');
+    } catch (e) {
+        alert('Erro ao exportar backup: ' + e.message);
+    }
+}
+
+function converterDataParaDDMMAAAA(valor){
+    if(!valor) return '';
+    
+    // Se está em formato ISO (YYYY-MM-DD)
+    if(/^\d{4}-\d{2}-\d{2}/.test(valor)){
+        const [ano, mes, dia] = valor.split('-');
+        return `${dia}/${mes}/${ano}`;
+    }
+    
+    // Se está em formato DD/MM/YYYY
+    if(/^\d{2}\/\d{2}\/\d{4}/.test(valor)){
+        return valor;
+    }
+    
+    // Se está em formato DD/MM/YY
+    if(/^\d{2}\/\d{2}\/\d{2}$/.test(valor)){
+        const [dia, mes, ano] = valor.split('/');
+        const anoCompleto = parseInt(ano) > 50 ? '19'+ano : '20'+ano;
+        return `${dia}/${mes}/${anoCompleto}`;
+    }
+    
+    return valor;
+}
+
+function converterParaISO(valor){
+    if(!valor) return '';
+    
+    // Se está em formato DD/MM/AAAA
+    if(/^\d{2}\/\d{2}\/\d{4}/.test(valor)){
+        const [dia, mes, ano] = valor.split('/');
+        return `${ano}-${mes}-${dia}`;
+    }
+    
+    // Se já está em formato ISO
+    if(/^\d{4}-\d{2}-\d{2}/.test(valor)){
+        return valor.split('T')[0];
+    }
+    
+    return valor;
+}
+
+
+function importarFuncionarios(e){
+    const file=e.target.files[0];
+    if(!file) return;
+
+    const reader=new FileReader();
+    reader.onload=function(evt){
+        const data=new Uint8Array(evt.target.result);
+        const workbook=XLSX.read(data,{type:'array'});
+        let registros=[];
+
+        workbook.SheetNames.forEach(nomeAba=>{
+            const sheet=workbook.Sheets[nomeAba];
+            const dados=XLSX.utils.sheet_to_json(sheet,{defval:''});
+            dados.forEach(l=>l.__aba=nomeAba);
+            registros.push(...dados);
+        });
+
+        let incluidos=0;
+        let atualizados=0;
+
+        registros.forEach(x=>{
+            const num=String(x['NUMERAL']||'').replace(/\D/g,'');
+            if(!num || parseInt(num)<1000) return;
+
+            const cpf = String(x['CPF']||'').replace(/\D/g,'').padStart(11,'0');
+
+            const existente = base.find(
+                r => r.num === num &&
+                     r.cpf === cpf
+            );
+
+            const dados={
+                num:num,
+                nome:String(x['NOME']||'').trim().toUpperCase(),
+                cpf: cpf,
+                rg:String(x['RG']||'').replace(/\D/g,''),
+                nasc:converterDataParaDDMMAAAA(String(x['NASCIMENTO']||'')),
+                email:String(x['E-MAIL']||x['EMAIL']||''),
+                cat:
+                    (x.__aba||'').toUpperCase().includes('DEPENDENTE')
+                    ? 'DEPENDENTE FUNCIONARIO'
+                    : 'FUNCIONARIO',
+                status:
+                    existente
+                        ? existente.status
+                        : ((num === '1000' || num === '1001')
+                            ? 'HABILITADO'
+                            : 'AGUARDANDO VALIDAÇÃO'),
+                statusCadastro:'ATIVO',
+                ultimaAlteracao:new Date().toISOString(),
+                obs: []
+            };
+
+            if(existente){
+                Object.assign(existente,dados);
+                atualizados++;
+            } else {
+                dados.dataCadastro=new Date().toISOString();
+                base.push(dados);
+                incluidos++;
+            }
+        });
+
+        current=[...base];
+        salvarLocal();
+        render(current);
+        registrarHistorico('IMPORTAÇÃO FUNCIONÁRIOS','FUNCIONÁRIOS',`Incluídos:${incluidos} Atualizados:${atualizados}`);
+        alert(`Importação concluída!\nIncluídos: ${incluidos}\nAtualizados: ${atualizados}`);
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+
+function lerExcel(e){
+    const confirmar = confirm(
+`ATENÇÃO!
+
+Importar uma nova planilha pode substituir a base atual.
+
+ANTES de continuar:
+- Faça um Backup Completo Segurança
+- Confirme se o arquivo é correto
+
+Deseja continuar?`
+    );
+
+    if(!confirmar){
+        e.target.value = '';
+        return;
+    }
+
+    const senha = prompt(
+'Digite CONFIRMAR IMPORTAÇÃO para continuar:'
+    );
+
+    if(senha !== 'CONFIRMAR IMPORTAÇÃO'){
+        alert('Importação cancelada por segurança.');
+        e.target.value = '';
+        return;
+    }
+
+    const file=e.target.files[0];
+    if(!file) return;
+    
+    exportarBackupCompletoSeguranca();
+
+    const reader=new FileReader();
+    reader.onload=function(evt){
+        const data=new Uint8Array(evt.target.result);
+        const workbook=XLSX.read(data,{type:'array'});
+        const abaGeral=workbook.Sheets['GERAL'];
+        if(!abaGeral){ alert('Aba GERAL não encontrada.'); return; }
+        
+        let importados=XLSX.utils.sheet_to_json(abaGeral,{defval:''});
+        const agora = new Date().toISOString();
+        base=importados.map(x=>({
+            num:String(x['NUMERAL']||'').replace(/\D/g, ''),
+            nome:String(x['NOME']||'').trim().toUpperCase(),
+            cpf:String(x['CPF']||'').replace(/\D/g, '').padStart(11,'0'),
+            rg:String(x['RG']||'').replace(/\D/g, ''),
+            nasc:converterDataParaDDMMAAAA(String(x['NASCIMENTO']||'')),
+            cat:String(x['CATEGORIA ']||x['CATEGORIA']||'').trim().toUpperCase(),
+            email:String(x['E-MAIL']||x['EMAIL']||''),
+            status:String(x['STATUS']||'HABILITADO'),
+            statusCadastro:String(x['STATUSCADASTRO']||'ATIVO'),
+            dataCadastro: agora,
+            ultimaAlteracao: agora,
+            obs: []
+        }));
+        
+        current=[...base];
+        render(current);
+        salvarLocal();
+        registrarHistorico('IMPORTAÇÃO EXCEL','Base completa importada via Excel');
+        alert('Base importada com sucesso!');
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function render(arr){
+    const tb = document.getElementById('tb');
+    const ativos = arr.filter(x => x.statusCadastro === 'ATIVO');
+    tb.innerHTML=ativos.map((r)=>{
+        const realIndex = base.indexOf(r);
+        let statusClass = 'status-habilitado';
+        if(r.status === 'NAO HABILITADO') statusClass = 'status-desabilitado';
+        if(r.status === 'AGUARDANDO VALIDAÇÃO') statusClass = 'status-pendente';
+        
+        return `
+        <tr>
+            <td>${r.num}</td>
+            <td>${r.nome}</td>
+            <td>${r.cpf}</td>
+            <td>${r.rg}</td>
+            <td>${r.nasc}</td>
+            <td>${r.cat}</td>
+            <td>
+<select onchange="alterarStatusRapido(${realIndex}, this.value)" class="status-badge ${statusClass}">
+<option value="HABILITADO" ${r.status==='HABILITADO'?'selected':''}>HABILITADO</option>
+<option value="NAO HABILITADO" ${r.status==='NAO HABILITADO'?'selected':''}>NÃO HABILITADO</option>
+<option value="AGUARDANDO VALIDAÇÃO" ${r.status==='AGUARDANDO VALIDAÇÃO'?'selected':''}>AGUARDANDO</option>
+</select>
+</td>
+            <td>
+                <div style="display:flex; gap:2px">
+                    <button class='acao' style='background:#6c757d' onclick='abrirModalObs("STATUS", ${realIndex})' title='Mudar Status'>⚙️</button>
+                    <button class='acao editar' onclick='editarRegistro(${realIndex})' title='Editar'>✏️</button>
+                    <button class='acao excluir' onclick='abrirModalObs("EXCLUIR", ${realIndex})' title='Excluir'>🗑️</button>
+                    <button class='acao' style='background:#0b3d91' onclick='verHistoricoIndividual(${realIndex})' title='Histórico'>📜</button>
+                    ${r.status === 'AGUARDANDO VALIDAÇÃO' ? `<button class='acao validar' onclick='abrirModalObs("VALIDAR", ${realIndex})' title='Validar Zelo'>✅</button>` : ''}
+                </div>
+            </td>
+        </tr>
+    `}).join('');
+    document.getElementById('tot').innerHTML='Registros ativos: '+ativos.length;
+    atualizarFinanceiro();
+}
+
+function alterarStatusRapido(index, novoStatus){
+    const original = base[index];
+    base[index].status = novoStatus;
+    base[index].ultimaAlteracao = new Date().toISOString();
+
+    registrarHistorico(
+        'ALTERAÇÃO RÁPIDA STATUS',
+        base[index].nome,
+        `STATUS ALTERADO DE ${original.status} PARA ${novoStatus}`,
+        'SISTEMA',
+        base[index].cpf,
+        base[index].num
+    );
+    
+    // Se alterou de AGUARDANDO VALIDAÇÃO para HABILITADO, enviar e-mail
+    if(original.status === 'AGUARDANDO VALIDAÇÃO' && novoStatus === 'HABILITADO'){
+        setTimeout(() => enviarEmailValidacao(base[index]), 500);
+    }
+
+    salvarLocal();
+    filtrar();
+}
+
+function abrirModalObs(tipo, index){
+    const p = base[index];
+    acaoPendente = { tipo, index };
+    document.getElementById('modalObsInfo').innerText = `${tipo}: ${p.nome} (${p.num})`;
+    document.getElementById('obsAutor').value = "";
+    document.getElementById('obsTexto').value = "";
+    document.getElementById('btnConfirmarObs').onclick = confirmarAcaoComObs;
+    document.getElementById('modalObs').style.display = 'flex';
+}
+
+function fecharModal(id){
+    document.getElementById(id).style.display = 'none';
+}
+
+function confirmarAcaoComObs(){
+    const autor = document.getElementById('obsAutor').value.trim();
+    const texto = document.getElementById('obsTexto').value.trim();
+    if(!autor || !texto) { alert('Preencha o autor e o motivo.'); return; }
+    
+    const { tipo, index } = acaoPendente;
+    const p = base[index];
+    const agora = new Date().toISOString();
+    
+    if(tipo === "STATUS"){
+        const statusAnterior = p.status;
+        p.status = p.status === 'HABILITADO' ? 'NAO HABILITADO' : 'HABILITADO';
+        registrarHistorico("ALTERAÇÃO STATUS", p.nome, `STATUS ALTERADO DE ${statusAnterior} PARA ${p.status}: ${texto}`, autor, p.cpf, p.num);
+    } else if(tipo === "EXCLUIR"){
+        let backupExcluidos = JSON.parse(localStorage.getItem('backupExcluidosZelo') || '[]');
+        backupExcluidos.unshift({
+            dataBackup: new Date().toLocaleString('pt-BR'),
+            registro: {...p},
+            motivo: texto,
+            autor
+        });
+        localStorage.setItem('backupExcluidosZelo', JSON.stringify(backupExcluidos));
+        p.statusCadastro = 'EXCLUIDO';
+        registrarHistorico("EXCLUSÃO", p.nome, `REGISTRO EXCLUÍDO: ${texto}`, autor, p.cpf, p.num);
+
+        if(p.cat === 'TITULAR'){
+            base.forEach(d => {
+                if(d.num === p.num && d.cat.includes('DEPENDENTE')){
+                    d.statusCadastro = 'EXCLUIDO';
+                    registrarHistorico("EXCLUSÃO CASCATA", d.nome, `TITULAR EXCLUÍDO: ${p.nome}`, autor, d.cpf, d.num);
+                }
+            });
+        }
+    } else if(tipo === "VALIDAR"){
+        p.status = 'HABILITADO';
+        registrarHistorico("VALIDAÇÃO ZELO", p.nome, `REGISTRO VALIDADO: ${texto}`, autor, p.cpf, p.num);
+        // Enviar e-mail de validação
+        enviarEmailValidacao(p);
+    } else if(tipo === "MORTALIDADE"){
+        let backupMorto = JSON.parse(localStorage.getItem('backupMortoZelo') || '[]');
+        backupMorto.unshift({
+            dataBackup: new Date().toLocaleString('pt-BR'),
+            registro: {...p},
+            motivo: texto,
+            autor
+        });
+        localStorage.setItem('backupMortoZelo', JSON.stringify(backupMorto));
+        p.statusCadastro = 'MORTO';
+        registrarHistorico("ARQUIVO MORTO", p.nome, `MOVIDO PARA ARQUIVO MORTO: ${texto}`, autor, p.cpf, p.num);
+    } else if(tipo === "REATIVAR"){
+        p.statusCadastro = 'ATIVO';
+        registrarHistorico("REATIVAÇÃO", p.nome, `REGISTRO REATIVADO: ${texto}`, autor, p.cpf, p.num);
+    }
+    
+    p.ultimaAlteracao = agora;
+    p.obs.push({data: agora, autor, texto, tipo});
+    
+    salvarLocal();
+    current=[...base];
+    render(current);
+    fecharModal('modalObs');
+    filtrar();
+    renderExcluidos();
+}
+
+function verHistoricoIndividual(index){
+    const p = base[index];
+    document.getElementById('modalHistIndTitulo').innerText = `Histórico: ${p.nome}`;
+    const tb = document.getElementById('tbHistInd');
+    let histGeral = JSON.parse(localStorage.getItem('historicoZelo')||'[]');
+    let histArq = JSON.parse(localStorage.getItem('historicoArquivadoZelo')||'[]');
+    let todos = histGeral.concat(histArq).filter(h => h.cpf === p.cpf || (h.num === p.num && h.num !== ""));
+    tb.innerHTML = todos.map(h => `<tr><td>${h.data}</td><td>${h.acao}</td><td>${h.obs} <br><small>Por: ${h.autor}</small></td></tr>`).join('');
+    document.getElementById('modalHistInd').style.display = 'flex';
+}
+
+function ordenarBase(campo){
+    if(ordemAtual.campo === campo) { ordemAtual.direcao *= -1; } else { ordemAtual.campo = campo; ordemAtual.direcao = 1; }
+    base.sort((a, b) => {
+        let valA = a[campo]; let valB = b[campo];
+        if(campo === 'num') { valA = parseInt(valA) || 0; valB = parseInt(valB) || 0; }
+        if (valA < valB) return -1 * ordemAtual.direcao;
+        if (valA > valB) return 1 * ordemAtual.direcao;
+        return 0;
+    });
+    filtrar();
+}
+
+function atualizarFinanceiro(){
+    const ativos = base.filter(x => x.statusCadastro === 'ATIVO');
+    document.getElementById('kpiVidas').innerText=ativos.length;
+    document.getElementById('kpiTitulares').innerText=ativos.filter(x=>x.cat.includes('TITULAR')).length;
+    document.getElementById('kpiDependentes').innerText=ativos.filter(x=>x.cat==='DEPENDENTE').length;
+    document.getElementById('kpiFuncionarios').innerText=ativos.filter(x=>x.cat==='FUNCIONARIO').length;
+    document.getElementById('kpiDepFunc').innerText=ativos.filter(x=>x.cat.includes('DEPENDENTE FUNCIONARIO')).length;
+}
+
+function filtrar(){
+    let texto=document.getElementById('busca').value.toUpperCase().trim();
+    let categoria=document.getElementById('filtro').value;
+    let statusFiltro=document.getElementById('filtroStatus').value;
+    
+    // Limpar texto: remover apenas números e letras
+    let textoLimpo = texto.replace(/[^0-9A-Z]/g, '');
+    let isBuscaNumeralExata = /^\d+$/.test(textoLimpo);
+    
+    let resultado=base.filter(x=>{
+        if(x.statusCadastro !== 'ATIVO') return false;
+        
+        let buscaOk = !texto;
+        if(!buscaOk){
+            if(isBuscaNumeralExata){
+                // Busca por numeral: deve ser exato
+                buscaOk = String(x.num) === textoLimpo;
+            } else {
+                // Busca por nome ou CPF
+                let nomeBase = String(x.nome || '')
+                    .toUpperCase()
+                    .replace(/[^0-9A-Z]/g,'');
+
+                let cpfBase = String(x.cpf || '')
+                    .replace(/\D/g,'');
+
+                let nomeOk = nomeBase.includes(textoLimpo);
+                let cpfOk = cpfBase.includes(textoLimpo);
+                buscaOk = nomeOk || cpfOk;
+            }
+        }
+        
+        let categoriaOk=!categoria||x.cat===categoria;
+        let statusOk=!statusFiltro||x.status===statusFiltro;
+        return buscaOk && categoriaOk && statusOk;
+    });
+    current=resultado;
+    render(current);
+}
+
+function limparBusca(){
+    document.getElementById('busca').value='';
+    document.getElementById('filtro').value='';
+    document.getElementById('filtroStatus').value='';
+    filtrar();
+}
+
+function salvarRegistro(){
+    const agora = new Date().toISOString();
+    const nascData = document.getElementById('nv_nasc').value;
+    const nascFormatado = nascData ? converterDataParaDDMMAAAA(nascData) : '';
+    
+    let novo={
+        num:document.getElementById('nv_num').value.trim(),
+        nome:document.getElementById('nv_nome').value.trim().toUpperCase(),
+        cpf:document.getElementById('nv_cpf').value.trim().replace(/\D/g, '').padStart(11,'0'),
+        rg:document.getElementById('nv_rg').value.trim().replace(/\D/g, ''),
+        nasc: nascFormatado,
+        email:document.getElementById('nv_email').value.trim(),
+        cat:document.getElementById('nv_cat').value,
+        status: 'AGUARDANDO VALIDAÇÃO',
+        statusCadastro: 'ATIVO',
+        dataCadastro: agora,
+        ultimaAlteracao: agora,
+        obs: []
+    };
+    
+    if(!novo.num || !novo.nome || novo.cpf.length !== 11){
+        alert('Preencha Numeral, Nome e CPF (11 dígitos).');
+        return;
+    }
+
+    if(novo.cat === 'TITULAR'){
+        let existe = base.find(x => x.num === novo.num && x.cat === 'TITULAR' && x.statusCadastro === 'ATIVO' && (editando === -1 || base.indexOf(x) !== editando));
+        if(existe){
+            alert(`ERRO: Já existe um TITULAR para o numeral ${novo.num}: ${existe.nome}`);
+            return;
+        }
+    }
+
+    if(editando>=0){
+        const original = base[editando];
+        const mudancas = [];
+        
+        if(original.num !== novo.num) mudancas.push(`Numeral alterado de ${original.num} para ${novo.num}`);
+        if(original.nome !== novo.nome) mudancas.push(`Nome alterado de ${original.nome} para ${novo.nome}`);
+        if(original.cpf !== novo.cpf) mudancas.push(`CPF alterado`);
+        if(original.rg !== novo.rg) mudancas.push(`RG alterado de ${original.rg} para ${novo.rg}`);
+        if(original.nasc !== novo.nasc) mudancas.push(`Nascimento alterado de ${original.nasc} para ${novo.nasc}`);
+        if(original.email !== novo.email) mudancas.push(`E-mail alterado`);
+        if(original.cat !== novo.cat) mudancas.push(`Categoria alterada de ${original.cat} para ${novo.cat}`);
+        
+        if(original.cat === 'TITULAR' && original.num !== novo.num){
+            if(confirm("Você alterou o NUMERAL do Titular. Deseja alterar o numeral de TODOS os dependentes vinculados?")){
+                base.forEach(d => { if(d.num === original.num) d.num = novo.num; });
+            }
+        }
+        
+        base[editando]={...novo, status: original.status, statusCadastro: original.statusCadastro, dataCadastro: original.dataCadastro, ultimaAlteracao: agora, obs: original.obs};
+        registrarHistorico('EDIÇÃO CADASTRO', novo.nome, mudancas.join(' | '), 'SISTEMA', novo.cpf, novo.num);
+        editando=-1;
+    }else{
+        base.push(novo);
+        registrarHistorico('NOVO CADASTRO', novo.nome, "AGUARDANDO VALIDAÇÃO ZELO", 'SISTEMA', novo.cpf, novo.num);
+    }
+    filtrar();
+    salvarLocal();
+    cancelarEdicao();
+}
+
+function editarRegistro(index){
+    let p=base[index];
+    editando=index;
+    document.getElementById('nv_num').value=p.num;
+    document.getElementById('nv_nome').value=p.nome;
+    document.getElementById('nv_cpf').value=p.cpf;
+    document.getElementById('nv_rg').value=p.rg;
+    const dataISO = converterParaISO(p.nasc);
+    document.getElementById('nv_nasc').value = dataISO || '';
+    document.getElementById('nv_email').value=p.email;
+    document.getElementById('nv_cat').value=p.cat;
+    document.getElementById('tituloCadastro').innerText = 'Editando: ' + p.nome;
+    document.getElementById('btnCancelarEdicao').style.display = 'inline-block';
+    window.scrollTo(0,0);
+}
+
+function cancelarEdicao(){
+    editando = -1;
+    document.getElementById('tituloCadastro').innerText = 'Cadastrar Nova Vida';
+    document.getElementById('btnCancelarEdicao').style.display = 'none';
+    document.getElementById('nv_num').value='';
+    document.getElementById('nv_nome').value='';
+    document.getElementById('nv_cpf').value='';
+    document.getElementById('nv_rg').value='';
+    document.getElementById('nv_nasc').value='';
+    document.getElementById('nv_email').value='';
+    document.getElementById('nv_cat').value='TITULAR';
+}
+
+function gruposFinanceiros(){
+    const ativos = base.filter(x => x.statusCadastro === 'ATIVO' && x.status === 'HABILITADO');
+    const grupos = {};
+    
+    // Primeiro, criar grupos para todos os titulares/funcionários
+    ativos.forEach(p => {
+        if(p.cat === 'TITULAR' || p.cat === 'FUNCIONARIO'){
+            if(!grupos[p.num]){
+                grupos[p.num] = {
+                    num: p.num,
+                    nome: p.nome,
+                    email: p.email,
+                    categoria: p.cat,
+                    dependentes: 0,
+                    depsLista: [],
+                    valorTotal: VALOR_VIDA,
+                    valorPagar: 0,
+                    quemPaga: p.cat === 'TITULAR' ? 'COOPERTAXI' : 'COOPERTAXI'
+                };
+            }
+        }
+    });
+    
+    // Depois, adicionar TODOS os dependentes
+    ativos.forEach(p => {
+        if(p.cat === 'DEPENDENTE' || p.cat === 'DEPENDENTE FUNCIONARIO'){
+            // Procurar o grupo pelo numeral
+            if(grupos[p.num]){
+                grupos[p.num].dependentes++;
+                grupos[p.num].depsLista.push({nome: p.nome});
+                grupos[p.num].valorTotal += VALOR_VIDA;
+                grupos[p.num].valorPagar += VALOR_VIDA;
+            }
+        }
+    });
+    
+    return Object.values(grupos);
+}
+
+function buscarFinanceiro(){
+    const texto = document.getElementById('buscaFinanceiro').value.toUpperCase();
+    const grupos = gruposFinanceiros();
+    const filtrados = grupos.filter(g => g.nome.includes(texto) || g.num.includes(texto));
+    
+    const tb = document.getElementById('tbFinanceiro');
+    tb.innerHTML = filtrados.map(g => `
+        <tr>
+            <td>${g.num}</td>
+            <td>${g.nome}</td>
+            <td>${g.dependentes}</td>
+            <td>${g.depsLista.map(d => d.nome).join(', ')}</td>
+            <td>R$ ${g.valorPagar.toFixed(2)}</td>
+        </tr>
+    `).join('');
+}
+
+function filtrarRecibos(){
+    const texto = document.getElementById('buscaRecibo').value.toUpperCase();
+    const categoria = document.getElementById('filtroReciboCat').value;
+    const grupos = gruposFinanceiros();
+    let filtrados = grupos.filter(g => g.nome.includes(texto) || g.num.includes(texto));
+    
+    if(categoria) filtrados = filtrados.filter(g => g.categoria === categoria);
+    
+    const tb = document.getElementById('tbRecibos');
+    tb.innerHTML = filtrados.map(g => `
+        <tr>
+            <td><input type="checkbox" class="checkRecibo" value="${g.num}"></td>
+            <td>${g.num}</td>
+            <td>${g.nome}</td>
+            <td>${g.dependentes}</td>
+            <td>R$ ${g.valorPagar.toFixed(2)}</td>
+            <td><button class="acao" onclick="imprimirIndividual('${g.num}')" style="background:#198754">Imprimir</button></td>
+        </tr>
+    `).join('');
+}
+
+function selecionarTodosRecibos(status){
+    document.querySelectorAll('.checkRecibo').forEach(c => c.checked = status);
+}
+
+function imprimirIndividual(num){
+    const g = gruposFinanceiros().find(x => x.num === num);
+    if(g) { gerarHtmlRecibos([g]); window.print(); }
+}
+
+function imprimirSelecionados(){
+    let checks=document.querySelectorAll('.checkRecibo:checked');
+    if(checks.length === 0) { alert('Selecione ao menos um recibo.'); return; }
+    let selecionados = [];
+    checks.forEach(c => { let g = gruposFinanceiros().find(x => x.num === c.value); if(g) selecionados.push(g); });
+    gerarHtmlRecibos(selecionados);
+    window.print();
+}
+
+async function baixarRecibosPDF(){
+    let checks=document.querySelectorAll('.checkRecibo:checked');
+    if(checks.length === 0) { alert('Selecione ao menos um recibo.'); return; }
+    let selecionados = [];
+    checks.forEach(c => { let g = gruposFinanceiros().find(x => x.num === c.value); if(g) selecionados.push(g); });
+    gerarHtmlRecibos(selecionados);
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const area = document.getElementById('areaRecibo');
+    const canvas = await html2canvas(area);
+    const imgData = canvas.toDataURL('image/png');
+    const imgProps = doc.getImageProperties(imgData);
+    const pdfWidth = doc.internal.pageSize.getWidth();
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+    doc.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+    doc.save(`RECIBOS_ZELO_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    // Perguntar se deseja enviar por e-mail
+    const enviarEmails = confirm('Deseja enviar os recibos por e-mail para os titulares?');
+    if(enviarEmails){
+        selecionados.forEach(g => {
+            setTimeout(() => enviarEmailRecibo(g), 500);
+        });
+    }
+}
+
+function gerarHtmlRecibos(lista){
+    let html = '';
+    lista.forEach(g => {
+        const nomeCategoria = g.categoria === 'FUNCIONARIO' ? 'Funcionário' : 'Titular';
+        const todasAsPessoas = [g.nome, ...g.depsLista.map(d => d.nome)];
+        
+        html += `<div class="reciboBox">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #0b3d91; margin-bottom:10px">
+                <h2 style="margin:0; color:#0b3d91">RECIBO ZÊLO COOPERTAXI</h2>
+                <span style="font-size:12px">Gerado em: ${new Date().toLocaleDateString()}</span>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap:10px; margin-bottom:10px">
+                <div><b>Numeral:</b> ${g.num}</div>
+                <div><b>${nomeCategoria}:</b> ${g.nome}</div>
+            </div>
+            <div style="border:1px solid #ddd; padding:10px; border-radius:5px; background:#fff">
+                <b style="font-size:12px; display:block; margin-bottom:5px">PESSOAS COBERTAS:</b>
+                <ul style="margin:0; padding-left:20px; font-size:13px">
+                    ${todasAsPessoas.map(nome => `<li>${nome} → R$ ${VALOR_VIDA.toFixed(2)}</li>`).join('')}
+                </ul>
+            </div>
+            <div style="margin-top:15px; text-align:right">
+                <span class="valorDinheiro">TOTAL A PAGAR: R$ ${g.valorPagar.toFixed(2)}</span>
+            </div>
+        </div>`;
+    });
+    document.getElementById('areaRecibo').innerHTML = html;
+}
+
+function enviarEmailValidacao(pessoa){
+    if(!pessoa.email){
+        alert('Aviso: Registro não possui e-mail cadastrado. Não foi possível enviar notificação.');
+        return;
+    }
+    
+    const assunto = `Cadastro Validado - Zelo CooperTaxi - Numeral ${pessoa.num}`;
+    const corpo = `Olá ${pessoa.nome},\n\nSeu cadastro no plano Zelo CooperTaxi foi VALIDADO com sucesso!\n\nDados:\nNumeral: ${pessoa.num}\nCPF: ${pessoa.cpf}\nStatus: HABILITADO\n\nAtenciosamente,\nEquipe CooperTaxi - ${EMAIL_COOPER}`;
+    
+    enviarEmail(pessoa.email, assunto, corpo);
+}
+
+function enviarEmailRecibo(grupo){
+    if(!grupo.email){
+        alert('Aviso: Registro não possui e-mail cadastrado. Não foi possível enviar recibo.');
+        return;
+    }
+    
+    const assunto = `Recibo Zelo CooperTaxi - Numeral ${grupo.num}`;
+    const corpo = `Olá ${grupo.nome},\n\nSegue o resumo do seu recibo Zelo:\n\nNumeral: ${grupo.num}\nDependentes: ${grupo.dependentes}\nValor Unitário: R$ ${VALOR_VIDA.toFixed(2)}\nTotal a Pagar: R$ ${grupo.valorPagar.toFixed(2)}\n\nAtenciosamente,\nEquipe CooperTaxi - ${EMAIL_COOPER}`;
+    
+    enviarEmail(grupo.email, assunto, corpo);
+}
+
+function enviarEmail(destinatario, assunto, corpo){
+    // Simular envio de e-mail (em HTML puro, não é possível enviar e-mail direto)
+    // Mostrar modal com opção de copiar dados para enviar manualmente
+    
+    const linkMailto = `mailto:${destinatario}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    
+    const confirmar = confirm(
+        `E-mail preparado para: ${destinatario}\n\nAssunto: ${assunto}\n\nDeseja abrir seu cliente de e-mail padrão?\n\nClique OK para abrir, ou Cancelár para copiar o conteúdo.`
+    );
+    
+    if(confirmar){
+        window.location.href = linkMailto;
+    } else {
+        const textoCompleto = `PARA: ${destinatario}\nASSUNTO: ${assunto}\n\n${corpo}`;
+        navigator.clipboard.writeText(textoCompleto).then(() => {
+            alert('Conteúdo copiado! Cole em seu cliente de e-mail.');
+        }).catch(() => {
+            alert('Não foi possível copiar. Conteúdo:\n\n' + textoCompleto);
+        });
+    }
+    
+    registrarHistorico('E-MAIL ENVIADO', `E-mail enviado para ${destinatario}`, `Assunto: ${assunto}`, 'SISTEMA');
+}
+
+function gerarRemessa(tipo){
+    const agora = new Date();
+    const ativos = base.filter(x => x.statusCadastro === 'ATIVO' && x.status === 'HABILITADO');
+    const wb = XLSX.utils.book_new();
+    let filename = "";
+
+    if(tipo === 'FINANCEIRO'){
+        filename = `FINANCEIRO_COOP_${agora.toISOString().split('T')[0]}.xlsx`;
+        let grupos = gruposFinanceiros();
+
+        let geral = grupos.map(g=>({
+            NUMERAL: g.num,
+            NOME: g.nome,
+            DEPENDENTES: g.dependentes,
+            VALOR_TOTAL: Number(g.valorPagar.toFixed(2)),
+            CATEGORIA: g.categoria
+        }));
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(geral), 'GERAL_FINANCEIRO');
+
+        let tits = grupos
+            .filter(g => g.categoria === 'TITULAR')
+            .sort((a,b)=>a.valorPagar-b.valorPagar)
+            .map(g=>({
+                NUMERAL: g.num,
+                NOME: g.nome,
+                TOTAL_DEPENDENTES: Number((g.dependentes * VALOR_VIDA).toFixed(2)),
+                DEPENDENTES: g.dependentes,
+                TITULAR_PAGA: Number(g.valorPagar.toFixed(2))
+            }));
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tits), 'TITULARES');
+
+        let funcs = grupos
+            .filter(g => g.categoria === 'FUNCIONARIO')
+            .sort((a,b)=>a.valorPagar-b.valorPagar)
+            .map(g=>({
+                NUMERAL: g.num,
+                NOME: g.nome,
+                TOTAL_DEPENDENTES: Number((g.dependentes * VALOR_VIDA).toFixed(2)),
+                DEPENDENTES: g.dependentes,
+                TITULAR_FUNCIONARIO_PAGA: Number(g.valorPagar.toFixed(2)),
+                DETALHAMENTO: `FUNCIONÁRIO: R$ ${VALOR_VIDA.toFixed(2)} | DEPENDENTES: R$ ${(g.dependentes * VALOR_VIDA).toFixed(2)} | TOTAL FINAL: R$ ${g.valorPagar.toFixed(2)}`
+            }));
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(funcs), 'FUNCIONARIOS');
+
+        let totalCooper = ativos.filter(x=>x.cat==='TITULAR').length * VALOR_VIDA;
+        let totalDependentes = ativos.filter(x=>x.cat==='DEPENDENTE').length * VALOR_VIDA;
+        let totalFuncionarios = ativos.filter(x=>x.cat.includes('FUNCIONARIO')).length * VALOR_VIDA;
+        let totalGeral = totalCooper + totalDependentes + totalFuncionarios;
+
+        let resumo = [{
+            COOPERTAXI_PAGA_ZELO: Number(totalCooper.toFixed(2)),
+            TOTAL_DEPENDENTES: Number(totalDependentes.toFixed(2)),
+            TOTAL_FUNCIONARIOS: Number(totalFuncionarios.toFixed(2)),
+            TOTAL_GERAL: Number(totalGeral.toFixed(2))
+        }];
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), 'RESUMO');
+
+    } else if(tipo === 'ZELO'){
+        filename = `ZELO_CADASTRO_${agora.toISOString().split('T')[0]}.xlsx`;
+
+        let envioZelo = base.filter(x=>
+            x.statusCadastro === 'ATIVO' &&
+            (x.status === 'HABILITADO' || x.status === 'AGUARDANDO VALIDAÇÃO')
+        );
+
+        let dados = envioZelo.map(x => ({
+            NUMERAL: x.num,
+            NOME: x.nome,
+            CPF: x.cpf,
+            RG: x.rg,
+            NASCIMENTO: x.nasc,
+            CATEGORIA: x.cat,
+            STATUS: x.status
+        }));
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "ZELO_ENVIO");
+
+        let totalVidas = [{
+            TOTAL_VIDAS_HABILITADOS_E_AGUARDANDO: envioZelo.length
+        }];
+
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(totalVidas), "TOTAL_VIDAS");
+
+    } else if(tipo === 'RH'){
+        filename = `RH_FUNCIONARIOS_${agora.toISOString().split('T')[0]}.xlsx`;
+        let grupos = gruposFinanceiros();
+        let funcs = grupos.filter(g => g.categoria === 'FUNCIONARIO').map(g => ({
+            NUMERAL: g.num,
+            NOME: g.nome,
+            CPF: base.find(x => x.num === g.num && x.cat === 'FUNCIONARIO')?.cpf || '',
+            DEPENDENTES: g.dependentes,
+            VALOR_PAGAR: g.valorPagar
+        }));
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(funcs), "RH_PAGAMENTO");
+    }
+
+    if(filename && wb.SheetNames && wb.SheetNames.length > 0){
+        XLSX.writeFile(wb, filename);
+        registrarHistorico(`Remessa ${tipo}`, `Exportação realizada com sucesso.`);
+        alert(`Exportação ${tipo} concluída com sucesso!`);
+    } else {
+        alert('Erro: Nenhum dado para exportar.');
+    }
+}
+
+function renderRemessas(){
+    const lista = document.getElementById('listaRemessas');
+    if(remessas.length === 0){ lista.innerHTML = "<p>Nenhuma remessa arquivada.</p>"; return; }
+    lista.innerHTML = remessas.map(r => `<div class="card"><div style="display:flex; justify-content:space-between"><b>${r.tipo} - ${r.data}</b><button class="acao excluir" onclick="excluirRemessa(${r.id})">Remover do Arquivo</button></div><div class="grid" style="margin-top:5px; font-size:12px"><span>Vidas: ${r.totalVidas}</span><span style="color:#198754; font-weight:bold">Total: R$ ${r.valorTotal}</span></div></div>`).join('');
+}
+
+function excluirRemessa(id){
+    if(confirm('Deseja remover esta remessa do arquivo?')){ remessas = remessas.filter(r => r.id !== id); salvarLocal(); renderRemessas(); }
+}
+
+function enviarEmailValidacao(pessoa){
+    if(!pessoa.email){
+        alert('Aviso: Registro não possui e-mail cadastrado. Não foi possível enviar notificação.');
+        return;
+    }
+    
+    const assunto = `Cadastro Validado - Zelo CooperTaxi - Numeral ${pessoa.num}`;
+    const corpo = `Olá ${pessoa.nome},\n\nSeu cadastro no plano Zelo CooperTaxi foi VALIDADO com sucesso!\n\nDados:\nNumeral: ${pessoa.num}\nCPF: ${pessoa.cpf}\nStatus: HABILITADO\n\nAtenciosamente,\nEquipe CooperTaxi - ${EMAIL_COOPER}`;
+    
+    enviarEmail(pessoa.email, assunto, corpo);
+}
+
+function enviarEmailRecibo(grupo){
+    if(!grupo.email){
+        alert('Aviso: Registro não possui e-mail cadastrado. Não foi possível enviar recibo.');
+        return;
+    }
+    
+    const assunto = `Recibo Zelo CooperTaxi - Numeral ${grupo.num}`;
+    const corpo = `Olá ${grupo.nome},\n\nSegue o resumo do seu recibo Zelo:\n\nNumeral: ${grupo.num}\nDependentes: ${grupo.dependentes}\nValor Unitário: R$ ${VALOR_VIDA.toFixed(2)}\nTotal a Pagar: R$ ${grupo.valorPagar.toFixed(2)}\n\nAtenciosamente,\nEquipe CooperTaxi - ${EMAIL_COOPER}`;
+    
+    enviarEmail(grupo.email, assunto, corpo);
+}
+
+function enviarEmail(destinatario, assunto, corpo){
+    const linkMailto = `mailto:${destinatario}?subject=${encodeURIComponent(assunto)}&body=${encodeURIComponent(corpo)}`;
+    
+    const confirmar = confirm(
+        `E-mail preparado para: ${destinatario}\n\nAssunto: ${assunto}\n\nDeseja abrir seu cliente de e-mail padrão?\n\nClique OK para abrir, ou Cancelar para copiar o conteúdo.`
+    );
+    
+    if(confirmar){
+        window.location.href = linkMailto;
+    } else {
+        const textoCompleto = `PARA: ${destinatario}\nASSUNTO: ${assunto}\n\n${corpo}`;
+        navigator.clipboard.writeText(textoCompleto).then(() => {
+            alert('Conteúdo copiado! Cole em seu cliente de e-mail.');
+        }).catch(() => {
+            alert('Não foi possível copiar. Conteúdo:\n\n' + textoCompleto);
+        });
+    }
+    
+    registrarHistorico('E-MAIL ENVIADO', `E-mail enviado para ${destinatario}`, `Assunto: ${assunto}`, 'SISTEMA');
+}
+
+function renderExcluidos(){
+    const tbExcluidos = document.getElementById('tbExcluidos');
+    const tbArquivoMorto = document.getElementById('tbArquivoMorto');
+    tbExcluidos.innerHTML=base.map((x, i) => x.statusCadastro === 'EXCLUIDO' ? `<tr><td>${x.nome}</td><td>${x.num}</td><td>${x.cpf}</td><td><span class="status-badge status-excluido">Excluído</span></td><td><button class="acao" style="background:#198754" onclick="abrirModalObs('REATIVAR', ${i})">Reativar</button><button class="acao" style="background:#6c757d" onclick="abrirModalObs('MORTALIDADE', ${i})">Mover p/ Morto</button></td></tr>` : '').join('');
+    tbArquivoMorto.innerHTML=base.map((x, i) => x.statusCadastro === 'MORTO' ? `<tr><td>${x.nome}</td><td>${x.num}</td><td>${x.cpf}</td><td><span class="status-badge status-morto">Arquivo Morto</span></td><td><button class="acao" style="background:#198754" onclick="abrirModalObs('REATIVAR', ${i})">Reativar</button></td></tr>` : '').join('');
+}
+
+window.addEventListener('beforeunload', ()=>{
+    salvarLocal();
+});
+
+
+function exportarBaseCompleta(){
+    const dados = base.map(x => ({
+        NUMERAL: x.num || '',
+        NOME: x.nome || '',
+        CPF: x.cpf || '',
+        RG: x.rg || '',
+        NASCIMENTO: x.nasc || '',
+        EMAIL: x.email || '',
+        CATEGORIA: x.cat || '',
+        STATUS: x.status || '',
+        DATA_INCLUSAO: x.dataCadastro || '',
+        ULTIMA_ALTERACAO: x.ultimaAlteracao || ''
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dados);
+    XLSX.utils.book_append_sheet(wb, ws, 'BASE_COMPLETA');
+    XLSX.writeFile(wb, 'BASE_COMPLETA_ZELO.xlsx');
+
+    registrarHistorico(
+        'EXPORTACAO BASE COMPLETA',
+        'BASE COMPLETA EXPORTADA'
+    );
+}
+
+
+
+function restaurarBackupJSON(e){
+const arquivo=e.target.files[0];
+if(!arquivo)return;
+if(!confirm('ATENÇÃO!\n\nA restauração substituirá todos os dados atuais.\n\nDeseja continuar?')) return;
+const reader=new FileReader();
+reader.onload=function(evt){
+try{
+const backup=JSON.parse(evt.target.result);
+if(!backup.base){alert('Arquivo de backup inválido.');return;}
+base=backup.base||[];
+remessas=backup.remessas||[];
+historicoArquivado=backup.historicoArquivado||[];
+if(backup.config){
+VALOR_VIDA=backup.config.VALOR_VIDA||4;
+EMAIL_COOPER=backup.config.EMAIL_COOPER||'';
+localStorage.setItem('configZelo',JSON.stringify(backup.config));
+}
+localStorage.setItem('baseZelo',JSON.stringify(base));
+localStorage.setItem('remessasZelo',JSON.stringify(remessas));
+localStorage.setItem('historicoArquivadoZelo',JSON.stringify(historicoArquivado));
+current=[...base];
+render(current);
+renderHistorico();
+renderExcluidos();
+atualizarFinanceiro();
+alert('✅ Backup restaurado com sucesso! Registros: '+base.length);
+location.reload();
+}catch(err){alert('Erro ao restaurar backup: '+err.message);}
+};
+reader.readAsText(arquivo);
+}
+
+carregarLocal();
+
+</script>
+</body>
+</html>
